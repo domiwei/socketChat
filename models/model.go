@@ -1,7 +1,16 @@
 package model
 
+type MsgType int
+
+const (
+	Join MsgType = iota
+	Text
+	Leave
+)
+
 type Message struct {
-	OpenID string
-	RoomID string
-	Msg    string
+	Type      MsgType `json:"type"`
+	OpenID    string  `json:"openID"`
+	ChannelID string  `json:"channelID"`
+	Text      string  `json:"Text"`
 }
