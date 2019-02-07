@@ -27,13 +27,13 @@ func (c *ClientConn) Listen() {
 	fmt.Println("Connecting...")
 	buffer := make([]byte, bufferSize)
 	for {
-		_, err := c.conn.Read(buffer)
+		n, err := c.conn.Read(buffer)
 		if err != nil {
 			fmt.Println(err.Error())
 			break
 		}
 		msg := model.Message{}
-		if err := json.Unmarshal(buffer, &msg); err != nil {
+		if err := json.Unmarshal(buffer[:n], &msg); err != nil {
 			fmt.Println(err.Error())
 			continue
 		}
