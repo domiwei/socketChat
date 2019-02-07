@@ -34,7 +34,7 @@ func (c *ClientConn) Listen() {
 		}
 		msg := model.Message{}
 		if err := json.Unmarshal(buffer[:n], &msg); err != nil {
-			fmt.Println(err.Error())
+			fmt.Println(err.Error(), buffer[:n])
 			continue
 		}
 		ch, ok := c.chanMgr.Channels[msg.ChannelID]
