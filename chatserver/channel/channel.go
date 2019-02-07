@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	model "github.com/socketChat/models"
 )
@@ -45,6 +46,7 @@ func (c *Channel) Serve() {
 	for {
 		select {
 		case msg := <-c.msgChan:
+			msg.Timestamp = time.Now().Unix()
 			fmt.Println(msg)
 			c.history = append(c.history, msg)
 			c.notifyBroadcast()
