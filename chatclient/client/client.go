@@ -55,7 +55,8 @@ func NewClient(server, openName string) *Client {
 }
 
 func (c *Client) read() {
-	buffer := make([]byte, 2048)
+	defer c.conn.Close()
+	buffer := make([]byte, 65536)
 	for {
 		n, err := c.conn.Read(buffer)
 		if err != nil {
@@ -68,6 +69,9 @@ func (c *Client) read() {
 			return
 		}
 		for _, msg := range msgs {
+			if msg.OpenID == c.openID {
+				msg.OpenID = "->" + msg.OpenID
+			}
 			t := time.Unix(msg.Timestamp, int64(0)).Format("Mon Jan _2 15:04:05 2006")
 			fmt.Printf("%s (%s): %s", msg.OpenID, t, msg.Text)
 		}
@@ -76,6 +80,7 @@ func (c *Client) read() {
 }
 
 func (c *Client) write() {
+	defer c.conn.Close()
 	for {
 		select {
 		case data := <-c.InputChan:
@@ -93,6 +98,7 @@ func (c *Client) write() {
 			_, err = c.conn.Write(b)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
+				return
 			}
 			//println("Write to:", c.conn.RemoteAddr(), data)
 		}

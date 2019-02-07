@@ -38,8 +38,9 @@ func (c *ClientConn) Listen() {
 			fmt.Println(err.Error())
 			continue
 		}
-		ch, ok := c.chanMgr.Channels[msg.ChannelID]
-		if !ok {
+		ch, err := c.chanMgr.GetChannel(msg.ChannelID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, err.Error(), msg.ChannelID)
 			continue
 		}
 
@@ -49,12 +50,12 @@ func (c *ClientConn) Listen() {
 			c.openID = msg.OpenID
 			if err := ch.Join(model.ID(c.openID), c.conn); err != nil {
 				fmt.Println(err.Error())
-				//TODO
+				break
 			}
 		case model.Leave:
 			if err := ch.Leave(model.ID(c.openID)); err != nil {
 				fmt.Println(err.Error())
-				//TODO
+				break
 			}
 			break
 		case model.Text:

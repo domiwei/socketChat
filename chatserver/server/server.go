@@ -7,25 +7,34 @@ import (
 )
 
 var (
-	ErrChannelExist = fmt.Errorf("Channel exists")
+	ErrChannelExist    = fmt.Errorf("Channel exists")
+	ErrChannelNotExist = fmt.Errorf("Channel does not exist")
 )
 
 type ChanMgr struct {
 	addr     string
-	Channels map[string]*channel.Channel
+	channels map[string]*channel.Channel
 }
 
 func NewChanMgr(addr string) *ChanMgr {
 	return &ChanMgr{
 		addr:     addr,
-		Channels: map[string]*channel.Channel{},
+		channels: map[string]*channel.Channel{},
 	}
 }
 
 func (s *ChanMgr) AddChannel(ch *channel.Channel) error {
-	if _, exist := s.Channels[ch.ChannelID]; exist {
+	if _, exist := s.channels[ch.ChannelID]; exist {
 		return ErrChannelExist
 	}
-	s.Channels[ch.ChannelID] = ch
+	s.channels[ch.ChannelID] = ch
 	return nil
+}
+
+func (s *ChanMgr) GetChannel(channelID string) (*channel.Channel, error) {
+	ch, exist := s.channels[channelID]
+	if !exist {
+		return nil, ErrChannelNotExist
+	}
+	return ch, nil
 }
