@@ -32,13 +32,15 @@ func main() {
 		panic(err)
 	}
 	// Accept new clientconn
+	connID := int32(0)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			fmt.Println(err.Error())
 			break
 		}
-		clientconn := clientconn.NewClient(conn, server)
+		clientconn := clientconn.NewClient(conn, connID, server)
 		go clientconn.Listen()
+		connID++
 	}
 }

@@ -14,3 +14,5 @@ type Message struct {
 	ChannelID string  `json:"channelID"`
 	Text      string  `json:"Text"`
 }
+
+type ID string

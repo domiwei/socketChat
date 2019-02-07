@@ -16,6 +16,7 @@ const (
 
 type ClientConn struct {
 	openID  string
+	connID  int32
 	conn    net.Conn
 	chanMgr *server.ChanMgr
 }
@@ -23,6 +24,7 @@ type ClientConn struct {
 func (c *ClientConn) Listen() {
 	defer c.conn.Close()
 
+	fmt.Println("Connecting...")
 	buffer := make([]byte, bufferSize)
 	for {
 		_, err := c.conn.Read(buffer)
@@ -44,28 +46,29 @@ func (c *ClientConn) Listen() {
 		case model.Join:
 			// Init openID and join
 			c.openID = msg.OpenID
-			if err := ch.Join(c.openID, c.conn); err != nil {
+			if err := ch.Join(model.ID(c.openID), c.conn); err != nil {
+				fmt.Println(err.Error())
 				//TODO
 			}
 		case model.Leave:
-			if err := ch.Leave(c.openID); err != nil {
+			if err := ch.Leave(model.ID(c.openID)); err != nil {
+				fmt.Println(err.Error())
 				//TODO
 			}
+			break
 		case model.Text:
-			select {
-			case ch.MsgChan <- msg:
-				fmt.Println(msg)
-			default:
-				//TODO
+			if err := ch.SendMsg(msg); err != nil {
+				fmt.Println(err.Error())
 			}
 		}
 	}
 }
 
-func NewClient(conn net.Conn, chanMgr *server.ChanMgr) *ClientConn {
+func NewClient(conn net.Conn, connID int32, chanMgr *server.ChanMgr) *ClientConn {
 	return &ClientConn{
 		openID:  defaultID,
 		conn:    conn,
+		connID:  connID,
 		chanMgr: chanMgr,
 	}
 }
