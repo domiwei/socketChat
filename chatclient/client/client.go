@@ -13,10 +13,11 @@ import (
 type Client struct {
 	conn      net.Conn
 	tcpaddr   *net.TCPAddr
+	openID    string
 	InputChan chan string
 }
 
-func NewClient(server string) *Client {
+func NewClient(server, openName string) *Client {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
@@ -33,7 +34,7 @@ func NewClient(server string) *Client {
 	msg := model.Message{
 		Type:      model.Join,
 		ChannelID: "happy-pig-year",
-		OpenID:    "keweigg",
+		OpenID:    openName,
 	}
 	b, _ := json.Marshal(&msg)
 	if _, err := conn.Write(b); err != nil {
@@ -44,6 +45,7 @@ func NewClient(server string) *Client {
 	client := &Client{
 		conn:      conn,
 		tcpaddr:   tcpAddr,
+		openID:    openName,
 		InputChan: make(chan string, 1024),
 	}
 	go client.read()
@@ -80,7 +82,7 @@ func (c *Client) write() {
 			msg := model.Message{
 				Type:      model.Text,
 				ChannelID: "happy-pig-year",
-				OpenID:    "keweigg",
+				OpenID:    c.openID,
 				Text:      data,
 			}
 			b, err := json.Marshal(&msg)

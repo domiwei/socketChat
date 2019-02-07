@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/socketChat/chatserver/server"
 	model "github.com/socketChat/models"
@@ -34,7 +35,7 @@ func (c *ClientConn) Listen() {
 		}
 		msg := model.Message{}
 		if err := json.Unmarshal(buffer[:n], &msg); err != nil {
-			fmt.Println(err.Error(), buffer[:n])
+			fmt.Println(err.Error())
 			continue
 		}
 		ch, ok := c.chanMgr.Channels[msg.ChannelID]
@@ -62,6 +63,7 @@ func (c *ClientConn) Listen() {
 			}
 		}
 	}
+	fmt.Fprintf(os.Stderr, "%s left chatroom", c.openID)
 }
 
 func NewClient(conn net.Conn, connID int32, chanMgr *server.ChanMgr) *ClientConn {

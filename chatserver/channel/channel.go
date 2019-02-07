@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	ErrOpenIDExist    = fmt.Errorf("OpenID for this user exists")
-	ErrOpenIDNotExist = fmt.Errorf("OpenID for this user not exist")
+	ErrOpenIDExist    = fmt.Errorf("OpenID exists")
+	ErrOpenIDNotExist = fmt.Errorf("OpenID does not exist")
 	ErrMsgChanIsFull  = fmt.Errorf("Too many incoming messages")
 )
 
@@ -47,7 +47,6 @@ func (c *Channel) Serve() {
 		select {
 		case msg := <-c.msgChan:
 			msg.Timestamp = time.Now().Unix()
-			fmt.Println(msg)
 			c.history = append(c.history, msg)
 			c.notifyBroadcast()
 		}
@@ -66,6 +65,13 @@ func (c *Channel) Join(openID model.ID, conn net.Conn) error {
 		Conn:     conn,
 		MsgIndex: int32(0),
 	}
+	// Notify all clients
+	c.SendMsg(model.Message{
+		Type:      model.Text,
+		OpenID:    "system",
+		ChannelID: c.ChannelID,
+		Text:      string(openID) + " joins chatroom\n",
+	})
 	return nil
 }
 
@@ -78,13 +84,19 @@ func (c *Channel) Leave(openID model.ID) error {
 	}
 	// Remove
 	delete(c.users, openID)
+	c.SendMsg(model.Message{
+		Type:      model.Text,
+		OpenID:    "system",
+		ChannelID: c.ChannelID,
+		Text:      string(openID) + " left chatroom\n",
+	})
 	return nil
 }
 
 func (c *Channel) SendMsg(msg model.Message) error {
 	select {
 	case c.msgChan <- msg:
-		fmt.Println(msg)
+		fmt.Println("New message: ", msg.Text, msg.ChannelID, msg.OpenID)
 	default:
 		return ErrMsgChanIsFull
 	}
@@ -103,14 +115,21 @@ func (c *Channel) broadcast() error {
 		select {
 		case <-c.broadcastChan:
 			// TODO: concurrently send
+			leftIDs := []model.ID{}
 			historyEnd := int32(len(c.history))
 			for id, user := range c.users {
 				msgs := c.history[user.MsgIndex:historyEnd]
 				b, _ := json.Marshal(msgs)
 				// Send to client
-				user.Conn.Write(b)
-				// Update history indexing
-				c.users[id].MsgIndex = historyEnd
+				if _, err := user.Conn.Write(b); err != nil {
+					leftIDs = append(leftIDs, id)
+				} else {
+					// Update history indexing
+					c.users[id].MsgIndex = historyEnd
+				}
+			}
+			for _, id := range leftIDs {
+				c.Leave(id)
 			}
 		}
 	}
