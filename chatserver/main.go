@@ -6,7 +6,7 @@ import (
 	"net"
 
 	channel "github.com/socketChat/chatserver/channel"
-	"github.com/socketChat/chatserver/client"
+	"github.com/socketChat/chatserver/clientconn"
 	"github.com/socketChat/chatserver/server"
 )
 
@@ -23,7 +23,7 @@ func main() {
 		fmt.Println(err.Error())
 		panic(err)
 	}
-	server := server.NewServer(addr)
+	server := server.NewChanMgr(addr)
 	// Init a chat room and run
 	ch := channel.NewChannel("happy-pig-year")
 	go ch.Serve()
@@ -31,14 +31,14 @@ func main() {
 		fmt.Println(err.Error())
 		panic(err)
 	}
-	// Accept new client
+	// Accept new clientconn
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			fmt.Println(err.Error())
 			break
 		}
-		client := client.NewClient(conn, server)
-		go client.Listen()
+		clientconn := clientconn.NewClient(conn, server)
+		go clientconn.Listen()
 	}
 }

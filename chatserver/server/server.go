@@ -10,19 +10,19 @@ var (
 	ErrChannelExist = fmt.Errorf("Channel exists")
 )
 
-type Server struct {
+type ChanMgr struct {
 	addr     string
 	Channels map[string]*channel.Channel
 }
 
-func NewServer(addr string) *Server {
-	return &Server{
+func NewChanMgr(addr string) *ChanMgr {
+	return &ChanMgr{
 		addr:     addr,
 		Channels: map[string]*channel.Channel{},
 	}
 }
 
-func (s *Server) AddChannel(ch *channel.Channel) error {
+func (s *ChanMgr) AddChannel(ch *channel.Channel) error {
 	if _, exist := s.Channels[ch.ChannelID]; exist {
 		return ErrChannelExist
 	}

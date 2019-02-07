@@ -1,4 +1,4 @@
-package client
+package clientconn
 
 import (
 	"encoding/json"
@@ -14,13 +14,13 @@ const (
 	bufferSize = 4096
 )
 
-type Client struct {
-	openID string
-	conn   net.Conn
-	server *server.Server
+type ClientConn struct {
+	openID  string
+	conn    net.Conn
+	chanMgr *server.ChanMgr
 }
 
-func (c *Client) Listen() {
+func (c *ClientConn) Listen() {
 	defer c.conn.Close()
 
 	buffer := make([]byte, bufferSize)
@@ -35,7 +35,7 @@ func (c *Client) Listen() {
 			fmt.Println(err.Error())
 			continue
 		}
-		ch, ok := c.server.Channels[msg.ChannelID]
+		ch, ok := c.chanMgr.Channels[msg.ChannelID]
 		if !ok {
 			continue
 		}
@@ -62,10 +62,10 @@ func (c *Client) Listen() {
 	}
 }
 
-func NewClient(conn net.Conn, server *server.Server) *Client {
-	return &Client{
-		openID: defaultID,
-		conn:   conn,
-		server: server,
+func NewClient(conn net.Conn, chanMgr *server.ChanMgr) *ClientConn {
+	return &ClientConn{
+		openID:  defaultID,
+		conn:    conn,
+		chanMgr: chanMgr,
 	}
 }
