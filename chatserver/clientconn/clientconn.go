@@ -1,7 +1,9 @@
 package clientconn
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 
@@ -10,12 +12,13 @@ import (
 )
 
 const (
-	defaultID  = "123"
+	defaultID  = "ConnectedUser"
 	bufferSize = 4096
 )
 
 type ClientConn struct {
 	openID  string
+	userID  model.ID
 	connID  int32
 	conn    net.Conn
 	chanMgr *server.ChanMgr
@@ -23,10 +26,8 @@ type ClientConn struct {
 
 func (c *ClientConn) Listen() {
 	defer func() {
-		log.Printf("%s left chatroom", c.openID)
-		// For now, use openID as key to find out all channels user belonging,
-		// But actually need to lookup by uid to avoid change of openID.
-		err := c.chanMgr.LeaveAllChannels(c.openID)
+		log.Printf("%s, %s left chatroom", c.openID, c.userID)
+		err := c.chanMgr.LeaveAllChannels(c.userID)
 		if err != nil {
 			log.Println(err.Error())
 		}
@@ -46,6 +47,8 @@ func (c *ClientConn) Listen() {
 			log.Println(err.Error())
 			continue
 		}
+		// Fill in userID in msg model
+		msg.UserID = c.userID
 		// Get target channel and do approrpiate action
 		ch, err := c.chanMgr.GetChannel(msg.ChannelID)
 		if err != nil {
@@ -54,14 +57,13 @@ func (c *ClientConn) Listen() {
 		}
 		switch msg.Type {
 		case model.Join:
-			// Init openID and join
-			c.openID = msg.OpenID
-			if err := ch.Join(model.ID(c.openID), c.conn); err != nil {
+			// Join channel
+			if err := ch.Join(c.userID, msg.OpenID, c.conn); err != nil {
 				log.Println(err.Error())
 				return
 			}
 		case model.Leave:
-			if err := ch.Leave(model.ID(c.openID)); err != nil {
+			if err := ch.Leave(c.userID); err != nil {
 				log.Println(err.Error())
 				return
 			}
@@ -77,8 +79,20 @@ func (c *ClientConn) Listen() {
 func NewClient(conn net.Conn, connID int32, chanMgr *server.ChanMgr) *ClientConn {
 	return &ClientConn{
 		openID:  defaultID,
+		userID:  pseudoUUID(),
 		conn:    conn,
 		connID:  connID,
 		chanMgr: chanMgr,
 	}
+}
+
+func pseudoUUID() (uuid model.ID) {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Println("Error: ", err)
+		return
+	}
+	uuid = model.ID(fmt.Sprintf("%X-%X-%X-%X-%X", b[0:4], b[4:6], b[6:8], b[8:10], b[10:]))
+	return
 }

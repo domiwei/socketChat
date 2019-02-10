@@ -13,6 +13,7 @@ import (
 
 var (
 	ErrOpenIDExist    = fmt.Errorf("OpenID exists")
+	ErrUserIDExist    = fmt.Errorf("UserID exists")
 	ErrOpenIDNotExist = fmt.Errorf("OpenID does not exist")
 	ErrMsgChanIsFull  = fmt.Errorf("Too many incoming messages")
 )
@@ -41,6 +42,7 @@ func NewChannel(cID string) *Channel {
 }
 
 type user struct {
+	OpenID   string
 	Conn     net.Conn
 	MsgIndex int32
 }
@@ -52,21 +54,37 @@ func (c *Channel) Serve() {
 		select {
 		case msg := <-c.msgChan:
 			msg.Timestamp = time.Now().Unix()
+			if msg.UserID != "" { // Not a system message
+				u, ok := c.users[msg.UserID]
+				if ok {
+					msg.OpenID = u.OpenID
+				} else {
+					log.Println("Unknown userID in chatroom ", c.ChannelID)
+					break
+				}
+			}
 			c.history = append(c.history, msg)
 			c.notifyBroadcast()
 		}
 	}
 }
 
-func (c *Channel) Join(openID model.ID, conn net.Conn) error {
+func (c *Channel) Join(userID model.ID, openID string, conn net.Conn) error {
 	c.usersMutex.Lock()
 	defer c.usersMutex.Unlock()
-	// Check if user exists or not
-	if _, exist := c.users[openID]; exist {
+	// Check if this user exists or not
+	if _, exist := c.users[userID]; exist {
 		return ErrOpenIDExist
 	}
+	// Check if this openID exists or not
+	for _, user := range c.users {
+		if user.OpenID == openID {
+			return ErrUserIDExist
+		}
+	}
 	// Add a new user
-	c.users[openID] = &user{
+	c.users[userID] = &user{
+		OpenID:   openID,
 		Conn:     conn,
 		MsgIndex: int32(0),
 	}
@@ -75,25 +93,26 @@ func (c *Channel) Join(openID model.ID, conn net.Conn) error {
 		Type:      model.Text,
 		OpenID:    "system",
 		ChannelID: c.ChannelID,
-		Text:      string(openID) + " joins chatroom\n",
+		Text:      openID + " joins chatroom\n",
 	})
 	return nil
 }
 
-func (c *Channel) Leave(openID model.ID) error {
+func (c *Channel) Leave(userID model.ID) error {
 	c.usersMutex.Lock()
 	defer c.usersMutex.Unlock()
 	// Check if user exists or not
-	if _, exist := c.users[openID]; !exist {
+	u, exist := c.users[userID]
+	if !exist {
 		return ErrOpenIDNotExist
 	}
 	// Remove
-	delete(c.users, openID)
+	delete(c.users, userID)
 	c.SendMsg(model.Message{
 		Type:      model.Text,
 		OpenID:    "system",
 		ChannelID: c.ChannelID,
-		Text:      string(openID) + " left chatroom\n",
+		Text:      u.OpenID + " left chatroom\n",
 	})
 	return nil
 }

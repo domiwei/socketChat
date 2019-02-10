@@ -41,9 +41,9 @@ func (s *ChanMgr) GetChannel(channelID string) (*channel.Channel, error) {
 	return ch, nil
 }
 
-func (s *ChanMgr) LeaveAllChannels(userID string) error {
+func (s *ChanMgr) LeaveAllChannels(userID model.ID) error {
 	for _, ch := range s.channels {
-		if err := ch.Leave(model.ID(userID)); err != nil && err != channel.ErrOpenIDNotExist {
+		if err := ch.Leave(userID); err != nil && err != channel.ErrOpenIDNotExist {
 			log.Println("Failed to leave channel", err.Error())
 		}
 	}
