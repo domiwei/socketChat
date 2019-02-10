@@ -23,7 +23,10 @@ type ClientConn struct {
 }
 
 func (c *ClientConn) Listen() {
-	defer c.conn.Close()
+	defer func() {
+		fmt.Fprintf(os.Stderr, "%s left chatroom", c.openID)
+		c.conn.Close()
+	}()
 
 	fmt.Println("Connecting...")
 	buffer := make([]byte, bufferSize)
@@ -50,12 +53,12 @@ func (c *ClientConn) Listen() {
 			c.openID = msg.OpenID
 			if err := ch.Join(model.ID(c.openID), c.conn); err != nil {
 				fmt.Println(err.Error())
-				break
+				return
 			}
 		case model.Leave:
 			if err := ch.Leave(model.ID(c.openID)); err != nil {
 				fmt.Println(err.Error())
-				break
+				return
 			}
 			break
 		case model.Text:
@@ -64,7 +67,6 @@ func (c *ClientConn) Listen() {
 			}
 		}
 	}
-	fmt.Fprintf(os.Stderr, "%s left chatroom", c.openID)
 }
 
 func NewClient(conn net.Conn, connID int32, chanMgr *server.ChanMgr) *ClientConn {

@@ -3,6 +3,7 @@ package channel
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -14,6 +15,10 @@ var (
 	ErrOpenIDExist    = fmt.Errorf("OpenID exists")
 	ErrOpenIDNotExist = fmt.Errorf("OpenID does not exist")
 	ErrMsgChanIsFull  = fmt.Errorf("Too many incoming messages")
+)
+
+const (
+	msgChanBufSize = 10000
 )
 
 type Channel struct {
@@ -28,7 +33,7 @@ type Channel struct {
 func NewChannel(cID string) *Channel {
 	return &Channel{
 		ChannelID:     cID,
-		msgChan:       make(chan model.Message, 100000),
+		msgChan:       make(chan model.Message, msgChanBufSize),
 		history:       []model.Message{},
 		users:         map[model.ID]*user{},
 		broadcastChan: make(chan struct{}, 1),
@@ -41,7 +46,7 @@ type user struct {
 }
 
 func (c *Channel) Serve() {
-	fmt.Println("Channel " + c.ChannelID + " is serving")
+	log.Println("Channel " + c.ChannelID + " is serving")
 	go c.broadcast()
 	for {
 		select {
@@ -96,7 +101,7 @@ func (c *Channel) Leave(openID model.ID) error {
 func (c *Channel) SendMsg(msg model.Message) error {
 	select {
 	case c.msgChan <- msg:
-		fmt.Println("New message: ", msg.Text, msg.ChannelID, msg.OpenID)
+		log.Println("New message: ", msg.Text, msg.ChannelID, msg.OpenID)
 	default:
 		return ErrMsgChanIsFull
 	}
@@ -105,7 +110,7 @@ func (c *Channel) SendMsg(msg model.Message) error {
 
 func (c *Channel) notifyBroadcast() {
 	select {
-	case c.broadcastChan <- struct{}{}:
+	case c.broadcastChan <- struct{}{}: // Just notify
 	default:
 	}
 }
@@ -114,23 +119,32 @@ func (c *Channel) broadcast() error {
 	for {
 		select {
 		case <-c.broadcastChan:
-			// TODO: concurrently send
+			// Concurrently broadcast messages
 			leftIDs := []model.ID{}
 			historyEnd := int32(len(c.history))
-			for id, user := range c.users {
-				msgs := c.history[user.MsgIndex:historyEnd]
-				b, _ := json.Marshal(msgs)
-				// Send to client
-				if _, err := user.Conn.Write(b); err != nil {
-					leftIDs = append(leftIDs, id)
-				} else {
-					// Update history indexing
+			var wg sync.WaitGroup
+			for id, u := range c.users {
+				go func(id model.ID, u *user) {
+					wg.Add(1)
+					msgs := c.history[u.MsgIndex:historyEnd]
+					b, _ := json.Marshal(msgs)
+					// Send to client
+					if _, err := u.Conn.Write(b); err != nil {
+						log.Println("Error on " + string(id) + " : " + err.Error())
+						leftIDs = append(leftIDs, id)
+						return
+					}
+					// Update index of chat history for each client
 					c.users[id].MsgIndex = historyEnd
+				}(id, u)
+			}
+			wg.Wait()
+			for _, id := range leftIDs {
+				if err := c.Leave(id); err != nil {
+					log.Println("Error: ", err.Error())
 				}
 			}
-			for _, id := range leftIDs {
-				c.Leave(id)
-			}
+			log.Println(c.users)
 		}
 	}
 	return nil
