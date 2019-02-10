@@ -2,8 +2,10 @@ package server
 
 import (
 	"fmt"
+	"log"
 
 	channel "github.com/socketChat/chatserver/channel"
+	model "github.com/socketChat/models"
 )
 
 var (
@@ -37,4 +39,13 @@ func (s *ChanMgr) GetChannel(channelID string) (*channel.Channel, error) {
 		return nil, ErrChannelNotExist
 	}
 	return ch, nil
+}
+
+func (s *ChanMgr) LeaveAllChannels(userID string) error {
+	for _, ch := range s.channels {
+		if err := ch.Leave(model.ID(userID)); err != nil && err != channel.ErrOpenIDNotExist {
+			log.Println("Failed to leave channel", err.Error())
+		}
+	}
+	return nil
 }

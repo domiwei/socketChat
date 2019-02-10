@@ -24,6 +24,12 @@ type ClientConn struct {
 func (c *ClientConn) Listen() {
 	defer func() {
 		log.Printf("%s left chatroom", c.openID)
+		// For now, use openID as key to find out all channels user belonging,
+		// But actually need to lookup by uid to avoid change of openID.
+		err := c.chanMgr.LeaveAllChannels(c.openID)
+		if err != nil {
+			log.Println(err.Error())
+		}
 		c.conn.Close()
 	}()
 
@@ -40,12 +46,12 @@ func (c *ClientConn) Listen() {
 			log.Println(err.Error())
 			continue
 		}
+		// Get target channel and do approrpiate action
 		ch, err := c.chanMgr.GetChannel(msg.ChannelID)
 		if err != nil {
 			log.Printf(err.Error(), msg.ChannelID)
 			continue
 		}
-
 		switch msg.Type {
 		case model.Join:
 			// Init openID and join
