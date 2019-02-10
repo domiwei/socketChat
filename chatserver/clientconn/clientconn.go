@@ -2,9 +2,8 @@ package clientconn
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net"
-	"os"
 
 	"github.com/socketChat/chatserver/server"
 	model "github.com/socketChat/models"
@@ -24,26 +23,26 @@ type ClientConn struct {
 
 func (c *ClientConn) Listen() {
 	defer func() {
-		fmt.Fprintf(os.Stderr, "%s left chatroom", c.openID)
+		log.Printf("%s left chatroom", c.openID)
 		c.conn.Close()
 	}()
 
-	fmt.Println("Connecting...")
+	log.Println("Connecting...")
 	buffer := make([]byte, bufferSize)
 	for {
 		n, err := c.conn.Read(buffer)
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 			break
 		}
 		msg := model.Message{}
 		if err := json.Unmarshal(buffer[:n], &msg); err != nil {
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 			continue
 		}
 		ch, err := c.chanMgr.GetChannel(msg.ChannelID)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, err.Error(), msg.ChannelID)
+			log.Printf(err.Error(), msg.ChannelID)
 			continue
 		}
 
@@ -52,18 +51,18 @@ func (c *ClientConn) Listen() {
 			// Init openID and join
 			c.openID = msg.OpenID
 			if err := ch.Join(model.ID(c.openID), c.conn); err != nil {
-				fmt.Println(err.Error())
+				log.Println(err.Error())
 				return
 			}
 		case model.Leave:
 			if err := ch.Leave(model.ID(c.openID)); err != nil {
-				fmt.Println(err.Error())
+				log.Println(err.Error())
 				return
 			}
 			break
 		case model.Text:
 			if err := ch.SendMsg(msg); err != nil {
-				fmt.Println(err.Error())
+				log.Println(err.Error())
 			}
 		}
 	}

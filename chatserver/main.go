@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"net"
 
 	channel "github.com/socketChat/chatserver/channel"
@@ -20,7 +20,7 @@ func main() {
 	addr := *host + ":" + *port
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		panic(err)
 	}
 	server := server.NewChanMgr(addr)
@@ -28,7 +28,7 @@ func main() {
 	ch := channel.NewChannel("happy-pig-year")
 	go ch.Serve()
 	if err := server.AddChannel(ch); err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		panic(err)
 	}
 	// Accept new clientconn
@@ -36,7 +36,7 @@ func main() {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 			break
 		}
 		clientconn := clientconn.NewClient(conn, connID, server)
