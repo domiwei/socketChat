@@ -7,7 +7,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/socketChat/chatserver/server"
+	"github.com/socketChat/chatserver/channel"
 	model "github.com/socketChat/models"
 )
 
@@ -21,7 +21,7 @@ type ClientConn struct {
 	userID  model.ID
 	connID  int32
 	conn    net.Conn
-	chanMgr *server.ChanMgr
+	chanMgr *channel.ChanMgr
 }
 
 func (c *ClientConn) Listen() {
@@ -76,7 +76,7 @@ func (c *ClientConn) Listen() {
 	}
 }
 
-func NewClient(conn net.Conn, connID int32, chanMgr *server.ChanMgr) *ClientConn {
+func NewClient(conn net.Conn, connID int32, chanMgr *channel.ChanMgr) *ClientConn {
 	return &ClientConn{
 		openID:  defaultID,
 		userID:  pseudoUUID(),

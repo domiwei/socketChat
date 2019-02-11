@@ -1,51 +1,54 @@
 package server
 
 import (
-	"fmt"
 	"log"
+	"net"
 
 	channel "github.com/socketChat/chatserver/channel"
-	model "github.com/socketChat/models"
+	"github.com/socketChat/chatserver/clientconn"
 )
 
-var (
-	ErrChannelExist    = fmt.Errorf("Channel exists")
-	ErrChannelNotExist = fmt.Errorf("Channel does not exist")
+const (
+	defaultChannel = "happy-pig-year"
 )
 
-type ChanMgr struct {
-	addr     string
-	channels map[string]*channel.Channel
+type Server struct {
+	chanMgr  *channel.ChanMgr
+	listener net.Listener
+	connID   int32
 }
 
-func NewChanMgr(addr string) *ChanMgr {
-	return &ChanMgr{
-		addr:     addr,
-		channels: map[string]*channel.Channel{},
+func NewServer(host, port string) (*Server, error) {
+	addr := host + ":" + port
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
 	}
-}
-
-func (s *ChanMgr) AddChannel(ch *channel.Channel) error {
-	if _, exist := s.channels[ch.ChannelID]; exist {
-		return ErrChannelExist
+	chanMgr := channel.NewChanMgr(addr)
+	// Init a chat room and run
+	ch := channel.NewChannel(defaultChannel)
+	go ch.Serve()
+	if err := chanMgr.AddChannel(ch); err != nil {
+		log.Println(err.Error())
+		return nil, err
 	}
-	s.channels[ch.ChannelID] = ch
-	return nil
-}
-
-func (s *ChanMgr) GetChannel(channelID string) (*channel.Channel, error) {
-	ch, exist := s.channels[channelID]
-	if !exist {
-		return nil, ErrChannelNotExist
+	server := &Server{
+		chanMgr:  chanMgr,
+		listener: listener,
 	}
-	return ch, nil
+	return server, nil
 }
 
-func (s *ChanMgr) LeaveAllChannels(userID model.ID) error {
-	for _, ch := range s.channels {
-		if err := ch.Leave(userID); err != nil && err != channel.ErrOpenIDNotExist {
-			log.Println("Failed to leave channel", err.Error())
+func (s *Server) Serve() {
+	for {
+		conn, err := s.listener.Accept()
+		if err != nil {
+			log.Println(err.Error())
+			break
 		}
+		clientconn := clientconn.NewClient(conn, s.connID, s.chanMgr)
+		go clientconn.Listen()
+		s.connID++
 	}
-	return nil
 }
