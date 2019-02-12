@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"os"
+	"os/signal"
 
 	"github.com/socketChat/chatserver/server"
 )
@@ -17,5 +19,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	// Notify shutdown
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		server.ShutDown()
+	}()
+	// Serve
 	server.Serve()
 }

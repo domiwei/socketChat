@@ -13,14 +13,16 @@ const (
 )
 
 type Server struct {
-	chanMgr  *channel.ChanMgr
-	listener net.Listener
-	connID   int32
+	chanMgr      *channel.ChanMgr
+	listener     *net.TCPListener
+	connID       int32
+	shutdownChan chan interface{}
 }
 
 func NewServer(host, port string) (*Server, error) {
 	addr := host + ":" + port
-	listener, err := net.Listen("tcp", addr)
+	tcpAddr, _ := net.ResolveTCPAddr("tcp", addr)
+	listener, err := net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
@@ -34,21 +36,42 @@ func NewServer(host, port string) (*Server, error) {
 		return nil, err
 	}
 	server := &Server{
-		chanMgr:  chanMgr,
-		listener: listener,
+		chanMgr:      chanMgr,
+		listener:     listener,
+		shutdownChan: make(chan interface{}),
 	}
 	return server, nil
 }
 
 func (s *Server) Serve() {
-	for {
-		conn, err := s.listener.Accept()
-		if err != nil {
-			log.Println(err.Error())
-			break
+	defer log.Println("Server shutdown")
+	// spawn a goroutine to handle incoming connector
+	connChan := make(chan net.Conn)
+	go func() {
+		defer s.ShutDown()
+		for {
+			conn, err := s.listener.Accept()
+			if err != nil {
+				log.Println(err.Error())
+				return
+			}
+			connChan <- conn
 		}
-		clientconn := clientconn.NewClient(conn, s.connID, s.chanMgr)
-		go clientconn.Listen()
-		s.connID++
+	}()
+	// Process connection and new client
+	for {
+		select {
+		case <-s.shutdownChan:
+			s.listener.Close()
+			return
+		case conn := <-connChan:
+			clientconn := clientconn.NewClient(conn, s.connID, s.chanMgr)
+			go clientconn.Listen()
+			s.connID++
+		}
 	}
+}
+
+func (s *Server) ShutDown() {
+	s.shutdownChan <- struct{}{}
 }
