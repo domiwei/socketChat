@@ -24,11 +24,13 @@ func NewChanMgr(addr string) *ChanMgr {
 	}
 }
 
-func (s *ChanMgr) AddChannel(ch *Channel) error {
-	if _, exist := s.channels[ch.ChannelID]; exist {
+func (s *ChanMgr) NewChannel(channelName string) error {
+	if _, exist := s.channels[channelName]; exist {
 		return ErrChannelExist
 	}
-	s.channels[ch.ChannelID] = ch
+	ch := NewChannel(channelName)
+	s.channels[channelName] = ch
+	go ch.Serve()
 	return nil
 }
 

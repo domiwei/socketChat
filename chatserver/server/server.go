@@ -3,9 +3,11 @@ package server
 import (
 	"log"
 	"net"
+	"net/http"
 
 	channel "github.com/socketChat/chatserver/channel"
 	"github.com/socketChat/chatserver/clientconn"
+	"golang.org/x/net/websocket"
 )
 
 const (
@@ -34,9 +36,7 @@ func NewSocketServer(host, port string) (Server, error) {
 	}
 	chanMgr := channel.NewChanMgr(addr)
 	// Init a chat room and run
-	ch := channel.NewChannel(defaultChannel)
-	go ch.Serve()
-	if err := chanMgr.AddChannel(ch); err != nil {
+	if err := chanMgr.NewChannel(defaultChannel); err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
@@ -79,4 +79,55 @@ func (s *SocketServer) Serve() {
 
 func (s *SocketServer) ShutDown() {
 	s.shutdownChan <- struct{}{}
+}
+
+type WebSocketServer struct {
+	chanMgr      *channel.ChanMgr
+	connID       int32
+	httpserver   *http.Server
+	connChan     chan *websocket.Conn
+	shutdownChan chan interface{}
+}
+
+func (wss *WebSocketServer) handler(conn *websocket.Conn) {
+	wss.connChan <- conn
+}
+
+func NewWebSocketServer(port string) (Server, error) {
+	chanMgr := channel.NewChanMgr("")
+	// Init a chat room and run
+	if err := chanMgr.NewChannel(defaultChannel); err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+	server := &WebSocketServer{
+		chanMgr:      chanMgr,
+		httpserver:   &http.Server{Addr: ":" + port},
+		connChan:     make(chan *websocket.Conn),
+		shutdownChan: make(chan interface{}),
+	}
+	return server, nil
+}
+
+func (wss *WebSocketServer) Serve() {
+	go func() {
+		http.Handle("/chat", websocket.Handler(wss.handler))
+		if err := wss.httpserver.ListenAndServe(); err != nil {
+			log.Fatal(err.Error())
+		}
+	}()
+	for {
+		select {
+		case <-wss.shutdownChan:
+			return
+		case conn := <-wss.connChan:
+			clientconn := clientconn.NewClient(conn, wss.connID, wss.chanMgr)
+			go clientconn.Listen()
+			wss.connID++
+		}
+	}
+}
+
+func (wss *WebSocketServer) ShutDown() {
+	wss.shutdownChan <- struct{}{}
 }
