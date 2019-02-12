@@ -4,34 +4,54 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"sync"
 	"time"
 
 	model "github.com/socketChat/models"
+	"golang.org/x/net/websocket"
+)
+
+type ConnType int
+
+const (
+	Socket ConnType = iota
+	WebSocket
 )
 
 type Client struct {
 	conn       io.ReadWriteCloser
-	tcpaddr    *net.TCPAddr
 	openID     string
 	chatOutput io.Writer
 	InputChan  chan string
 	wg         sync.WaitGroup
 }
 
-func NewClient(server, openName string, chatOutput io.Writer) *Client {
-	tcpAddr, err := net.ResolveTCPAddr("tcp4", server)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
-		os.Exit(1)
-	}
+func NewClient(host, port, openName string, chatOutput io.Writer, conntype ConnType) *Client {
+	var conn io.ReadWriteCloser
+	switch conntype {
+	case Socket:
+		server := host + ":" + port
+		tcpAddr, err := net.ResolveTCPAddr("tcp4", server)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
-		os.Exit(1)
+		socketconn, err := net.DialTCP("tcp", nil, tcpAddr)
+		if err != nil {
+			log.Fatal(err)
+		}
+		conn = socketconn
+	case WebSocket:
+		origin := fmt.Sprintf("http://%s/", host)
+		url := fmt.Sprintf("ws://%s:%s/chat", host, port)
+		websocketconn, err := websocket.Dial(url, "", origin)
+		if err != nil {
+			log.Fatal(err)
+		}
+		conn = websocketconn
 	}
 
 	// Join channel
@@ -48,7 +68,6 @@ func NewClient(server, openName string, chatOutput io.Writer) *Client {
 
 	client := &Client{
 		conn:       conn,
-		tcpaddr:    tcpAddr,
 		openID:     openName,
 		chatOutput: chatOutput,
 		InputChan:  make(chan string, 1024),

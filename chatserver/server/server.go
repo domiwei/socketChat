@@ -91,7 +91,9 @@ type WebSocketServer struct {
 }
 
 func (wss *WebSocketServer) handler(conn *websocket.Conn) {
-	wss.connChan <- conn
+	clientconn := clientconn.NewClient(conn, wss.connID, wss.chanMgr)
+	go clientconn.Listen()
+	wss.connID++
 }
 
 func NewWebSocketServer(port string) (Server, error) {
@@ -104,7 +106,6 @@ func NewWebSocketServer(port string) (Server, error) {
 	server := &WebSocketServer{
 		chanMgr:      chanMgr,
 		httpserver:   &http.Server{Addr: ":" + port},
-		connChan:     make(chan *websocket.Conn),
 		shutdownChan: make(chan interface{}),
 	}
 	return server, nil
@@ -118,17 +119,8 @@ func (wss *WebSocketServer) Serve() {
 			log.Fatal(err.Error())
 		}
 	}()
-	for {
-		select {
-		case <-wss.shutdownChan:
-			wss.httpserver.Shutdown(context.Background())
-			return
-		case conn := <-wss.connChan:
-			clientconn := clientconn.NewClient(conn, wss.connID, wss.chanMgr)
-			go clientconn.Listen()
-			wss.connID++
-		}
-	}
+	<-wss.shutdownChan
+	wss.httpserver.Shutdown(context.Background())
 }
 
 func (wss *WebSocketServer) ShutDown() {

@@ -20,8 +20,7 @@ func main() {
 		panic("Must need an open name")
 		return
 	}
-	server := *host + ":" + *port
-	client := client.NewClient(server, *name, os.Stdout)
+	client := client.NewClient(*host, *port, *name, os.Stdout, client.WebSocket)
 	defer client.Close()
 	reader := bufio.NewReader(os.Stdin)
 	for {
