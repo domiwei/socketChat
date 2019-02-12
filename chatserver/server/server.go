@@ -12,14 +12,19 @@ const (
 	defaultChannel = "happy-pig-year"
 )
 
-type Server struct {
+type Server interface {
+	Serve()
+	ShutDown()
+}
+
+type SocketServer struct {
 	chanMgr      *channel.ChanMgr
 	listener     *net.TCPListener
 	connID       int32
 	shutdownChan chan interface{}
 }
 
-func NewServer(host, port string) (*Server, error) {
+func NewSocketServer(host, port string) (Server, error) {
 	addr := host + ":" + port
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", addr)
 	listener, err := net.ListenTCP("tcp", tcpAddr)
@@ -35,7 +40,7 @@ func NewServer(host, port string) (*Server, error) {
 		log.Println(err.Error())
 		return nil, err
 	}
-	server := &Server{
+	server := &SocketServer{
 		chanMgr:      chanMgr,
 		listener:     listener,
 		shutdownChan: make(chan interface{}),
@@ -43,7 +48,7 @@ func NewServer(host, port string) (*Server, error) {
 	return server, nil
 }
 
-func (s *Server) Serve() {
+func (s *SocketServer) Serve() {
 	defer log.Println("Server shutdown")
 	// spawn a goroutine to handle incoming connector
 	connChan := make(chan net.Conn)
@@ -72,6 +77,6 @@ func (s *Server) Serve() {
 	}
 }
 
-func (s *Server) ShutDown() {
+func (s *SocketServer) ShutDown() {
 	s.shutdownChan <- struct{}{}
 }

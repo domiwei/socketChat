@@ -13,7 +13,7 @@ import (
 )
 
 type Client struct {
-	conn       net.Conn
+	conn       io.ReadWriteCloser
 	tcpaddr    *net.TCPAddr
 	openID     string
 	chatOutput io.Writer

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 
@@ -20,7 +21,7 @@ type ClientConn struct {
 	openID  string
 	userID  model.ID
 	connID  int32
-	conn    net.Conn
+	conn    io.ReadWriteCloser
 	chanMgr *channel.ChanMgr
 }
 

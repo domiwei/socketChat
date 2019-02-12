@@ -3,8 +3,8 @@ package channel
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
-	"net"
 	"sync"
 	"time"
 
@@ -43,7 +43,7 @@ func NewChannel(cID string) *Channel {
 
 type user struct {
 	OpenID   string
-	Conn     net.Conn
+	Conn     io.ReadWriteCloser
 	MsgIndex int32
 }
 
@@ -69,7 +69,7 @@ func (c *Channel) Serve() {
 	}
 }
 
-func (c *Channel) Join(userID model.ID, openID string, conn net.Conn) error {
+func (c *Channel) Join(userID model.ID, openID string, conn io.ReadWriteCloser) error {
 	c.usersMutex.Lock()
 	defer c.usersMutex.Unlock()
 	// Check if this user exists or not
