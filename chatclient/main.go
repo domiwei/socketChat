@@ -21,7 +21,7 @@ func main() {
 		return
 	}
 	server := *host + ":" + *port
-	client := client.NewClient(server, *name)
+	client := client.NewClient(server, *name, os.Stdout)
 
 	for {
 		reader := bufio.NewReader(os.Stdin)

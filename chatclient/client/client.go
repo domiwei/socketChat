@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"time"
@@ -11,13 +12,14 @@ import (
 )
 
 type Client struct {
-	conn      net.Conn
-	tcpaddr   *net.TCPAddr
-	openID    string
-	InputChan chan string
+	conn       net.Conn
+	tcpaddr    *net.TCPAddr
+	openID     string
+	chatOutput io.Writer
+	InputChan  chan string
 }
 
-func NewClient(server, openName string) *Client {
+func NewClient(server, openName string, chatOutput io.Writer) *Client {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", server)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
@@ -43,14 +45,15 @@ func NewClient(server, openName string) *Client {
 	}
 
 	client := &Client{
-		conn:      conn,
-		tcpaddr:   tcpAddr,
-		openID:    openName,
-		InputChan: make(chan string, 1024),
+		conn:       conn,
+		tcpaddr:    tcpAddr,
+		openID:     openName,
+		chatOutput: chatOutput,
+		InputChan:  make(chan string, 1024),
 	}
 	go client.read()
 	go client.write()
-	fmt.Println("successfully connect...")
+	fmt.Fprintln(client.chatOutput, "successfully connect...")
 	return client
 }
 
@@ -73,9 +76,8 @@ func (c *Client) read() {
 				msg.OpenID = "->" + msg.OpenID
 			}
 			t := time.Unix(msg.Timestamp, int64(0)).Format("Mon Jan _2 15:04:05 2006")
-			fmt.Printf("%s (%s): %s", msg.OpenID, t, msg.Text)
+			fmt.Fprintf(c.chatOutput, "%s (%s): %s", msg.OpenID, t, msg.Text)
 		}
-		//println("Received from:", c.conn.RemoteAddr(), string(buffer[:n]))
 	}
 }
 
@@ -100,7 +102,6 @@ func (c *Client) write() {
 				fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
 				return
 			}
-			//println("Write to:", c.conn.RemoteAddr(), data)
 		}
 	}
 }
