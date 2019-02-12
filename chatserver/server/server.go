@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"log"
 	"net"
 	"net/http"
@@ -110,6 +111,7 @@ func NewWebSocketServer(port string) (Server, error) {
 }
 
 func (wss *WebSocketServer) Serve() {
+	defer log.Println("Server shutdown")
 	go func() {
 		http.Handle("/chat", websocket.Handler(wss.handler))
 		if err := wss.httpserver.ListenAndServe(); err != nil {
@@ -119,6 +121,7 @@ func (wss *WebSocketServer) Serve() {
 	for {
 		select {
 		case <-wss.shutdownChan:
+			wss.httpserver.Shutdown(context.Background())
 			return
 		case conn := <-wss.connChan:
 			clientconn := clientconn.NewClient(conn, wss.connID, wss.chanMgr)

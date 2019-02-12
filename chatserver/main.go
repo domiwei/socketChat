@@ -15,7 +15,7 @@ var (
 
 func main() {
 	flag.Parse()
-	server, err := server.NewSocketServer(*host, *port)
+	server, err := server.NewWebSocketServer(*port)
 	if err != nil {
 		panic(err)
 	}
