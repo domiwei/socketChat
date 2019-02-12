@@ -143,8 +143,9 @@ func (c *Channel) broadcast() error {
 			historyEnd := int32(len(c.history))
 			var wg sync.WaitGroup
 			for id, u := range c.users {
+				wg.Add(1)
 				go func(id model.ID, u *user) {
-					wg.Add(1)
+					defer wg.Done()
 					msgs := c.history[u.MsgIndex:historyEnd]
 					b, _ := json.Marshal(msgs)
 					// Send to client
