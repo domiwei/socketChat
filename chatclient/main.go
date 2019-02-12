@@ -17,15 +17,17 @@ var (
 func main() {
 	flag.Parse()
 	if *name == "" {
-		panic("Need an open name")
+		panic("Must need an open name")
 		return
 	}
 	server := *host + ":" + *port
 	client := client.NewClient(server, *name, os.Stdout)
-
+	defer client.Close()
+	reader := bufio.NewReader(os.Stdin)
 	for {
-		reader := bufio.NewReader(os.Stdin)
 		text, _ := reader.ReadString('\n')
-		client.InputChan <- text
+		if err := client.Send(text); err != nil {
+			break
+		}
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	model "github.com/socketChat/models"
@@ -17,6 +18,7 @@ type Client struct {
 	openID     string
 	chatOutput io.Writer
 	InputChan  chan string
+	wg         sync.WaitGroup
 }
 
 func NewClient(server, openName string, chatOutput io.Writer) *Client {
@@ -52,13 +54,16 @@ func NewClient(server, openName string, chatOutput io.Writer) *Client {
 		InputChan:  make(chan string, 1024),
 	}
 	go client.read()
-	go client.write()
 	fmt.Fprintln(client.chatOutput, "successfully connect...")
 	return client
 }
 
 func (c *Client) read() {
-	defer c.conn.Close()
+	defer func() {
+		fmt.Fprintf(c.chatOutput, "Connection lost...")
+		c.wg.Done()
+	}()
+	c.wg.Add(1)
 	buffer := make([]byte, 65536)
 	for {
 		n, err := c.conn.Read(buffer)
@@ -81,27 +86,27 @@ func (c *Client) read() {
 	}
 }
 
-func (c *Client) write() {
-	defer c.conn.Close()
-	for {
-		select {
-		case data := <-c.InputChan:
-			msg := model.Message{
-				Type:      model.Text,
-				ChannelID: "happy-pig-year",
-				OpenID:    c.openID,
-				Text:      data,
-			}
-			b, err := json.Marshal(&msg)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
-				return
-			}
-			_, err = c.conn.Write(b)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
-				return
-			}
-		}
+func (c *Client) Send(text string) error {
+	msg := model.Message{
+		Type:      model.Text,
+		ChannelID: "happy-pig-year",
+		OpenID:    c.openID,
+		Text:      text,
 	}
+	b, err := json.Marshal(&msg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
+		return err
+	}
+	_, err = c.conn.Write(b)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
+		return err
+	}
+	return nil
+}
+
+func (c *Client) Close() {
+	c.conn.Close()
+	c.wg.Wait()
 }
