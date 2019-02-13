@@ -1,4 +1,4 @@
-centralized socket based chatroom
+Centralized websocket/socket based chatroom
 
 - Both socket and websocket based chatroom are supported
 - Multi-users in a chatroom
