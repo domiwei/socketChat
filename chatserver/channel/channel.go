@@ -136,36 +136,35 @@ func (c *Channel) notifyBroadcast() {
 
 func (c *Channel) broadcast() error {
 	for {
-		select {
-		case <-c.broadcastChan:
-			// Concurrently broadcast messages
-			leftIDs := []model.ID{}
-			historyEnd := int32(len(c.history))
-			var wg sync.WaitGroup
-			for id, u := range c.users {
-				wg.Add(1)
-				go func(id model.ID, u *user) {
-					defer wg.Done()
-					msgs := c.history[u.MsgIndex:historyEnd]
-					b, _ := json.Marshal(msgs)
-					// Send to client
-					if _, err := u.Conn.Write(b); err != nil {
-						log.Println("Error on " + string(id) + " : " + err.Error())
-						leftIDs = append(leftIDs, id)
-						return
-					}
-					// Update index of chat history for each client
-					c.users[id].MsgIndex = historyEnd
-				}(id, u)
-			}
-			wg.Wait()
-			for _, id := range leftIDs {
-				if err := c.Leave(id); err != nil {
-					log.Println("Error: ", err.Error())
+		<-c.broadcastChan
+		// Concurrently broadcast messages
+		leftIDs := []model.ID{}
+		historyEnd := int32(len(c.history))
+		var wg sync.WaitGroup
+		for id, u := range c.users {
+			wg.Add(1)
+			go func(id model.ID, u *user) {
+				defer wg.Done()
+				msgs := c.history[u.MsgIndex:historyEnd]
+				b, _ := json.Marshal(msgs)
+				// Send to client
+				if _, err := u.Conn.Write(b); err != nil {
+					log.Println("Error on " + string(id) + " : " + err.Error())
+					leftIDs = append(leftIDs, id)
+					return
 				}
-			}
-			log.Println(c.users)
+				// Update index of chat history for each client
+				c.users[id].MsgIndex = historyEnd
+			}(id, u)
 		}
+		wg.Wait()
+		// Remove left users
+		for _, id := range leftIDs {
+			if err := c.Leave(id); err != nil {
+				log.Println("Error: ", err.Error())
+			}
+		}
+		log.Println(c.users)
 	}
 	return nil
 }
