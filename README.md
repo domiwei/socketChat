@@ -12,10 +12,12 @@ Usage:
 
 - server:
 	- cd ./chatserver
-	- go get -u golang.org/x/net
+	- go get -u golang.org/x/net/websocket
 	- go build
 	- ./chatserver -h localhost -p 1024
+	- Another choice is just "make run" under ./chatserver
 - client:
 	- cd ./chatclient
 	- go build
 	- ./chatclient -h localhost -p 1024 -n kewei // Join chatroom with openID "kewei"
+	- Another choice is just "make run" under ./chatclient

@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	host = flag.String("-h", "localhost", "server host name")
-	port = flag.String("-p", "1024", "port")
+	host = flag.String("h", "localhost", "server host name")
+	port = flag.String("p", "1024", "port")
 )
 
 func main() {
