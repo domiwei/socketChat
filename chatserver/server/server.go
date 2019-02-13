@@ -61,12 +61,12 @@ func (s *SocketServer) Serve() {
 				log.Println(err.Error())
 				return
 			}
+			// Process connection and new client
 			clientconn := clientconn.NewClient(conn, s.connID, s.chanMgr)
 			go clientconn.Listen()
 			s.connID++
 		}
 	}()
-	// Process connection and new client
 	<-s.shutdownChan
 	s.listener.Close()
 }
