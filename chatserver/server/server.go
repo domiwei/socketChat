@@ -53,7 +53,6 @@ func NewSocketServer(host, port string) (Server, error) {
 func (s *SocketServer) Serve() {
 	defer log.Println("Server shutdown")
 	// spawn a goroutine to handle incoming connector
-	connChan := make(chan net.Conn)
 	go func() {
 		defer s.ShutDown()
 		for {
@@ -62,21 +61,14 @@ func (s *SocketServer) Serve() {
 				log.Println(err.Error())
 				return
 			}
-			connChan <- conn
-		}
-	}()
-	// Process connection and new client
-	for {
-		select {
-		case <-s.shutdownChan:
-			s.listener.Close()
-			return
-		case conn := <-connChan:
 			clientconn := clientconn.NewClient(conn, s.connID, s.chanMgr)
 			go clientconn.Listen()
 			s.connID++
 		}
-	}
+	}()
+	// Process connection and new client
+	<-s.shutdownChan
+	s.listener.Close()
 }
 
 func (s *SocketServer) ShutDown() {
@@ -88,7 +80,6 @@ type WebSocketServer struct {
 	chanMgr      *channel.ChanMgr
 	connID       int32
 	httpserver   *http.Server
-	connChan     chan *websocket.Conn
 	shutdownChan chan interface{}
 }
 
