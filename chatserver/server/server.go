@@ -20,6 +20,7 @@ type Server interface {
 	ShutDown()
 }
 
+// SocketServer defines socket based chatroom server
 type SocketServer struct {
 	chanMgr      *channel.ChanMgr
 	listener     *net.TCPListener
@@ -82,6 +83,7 @@ func (s *SocketServer) ShutDown() {
 	s.shutdownChan <- struct{}{}
 }
 
+// WebSocketServer defines websocket based chatroom server
 type WebSocketServer struct {
 	chanMgr      *channel.ChanMgr
 	connID       int32
@@ -92,8 +94,8 @@ type WebSocketServer struct {
 
 func (wss *WebSocketServer) handler(conn *websocket.Conn) {
 	clientconn := clientconn.NewClient(conn, wss.connID, wss.chanMgr)
-	go clientconn.Listen()
 	wss.connID++
+	clientconn.Listen()
 }
 
 func NewWebSocketServer(port string) (Server, error) {
