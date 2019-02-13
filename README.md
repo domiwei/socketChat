@@ -15,9 +15,9 @@ Usage:
 	- go get -u golang.org/x/net/websocket
 	- go build
 	- ./chatserver -h localhost -p 1024
-	- Another choice is just "make run" under ./chatserver
+	- Another choice is just "make run host=[host] port=[port]" under ./chatserver
 - client:
 	- cd ./chatclient
 	- go build
-	- ./chatclient -h localhost -p 1024 -n kewei // Join chatroom with openID "kewei"
-	- Another choice is just "make run" under ./chatclient
+	- ./chatclient -h localhost -p 1024 -n kewei
+	- Another choice is just "make run name=[name] host=[host] port=[port]" under ./chatclient
