@@ -11,11 +11,11 @@ centralized socket based chatroom
 Usage:
 
 - server:
-	cd ./chatserver
-	go get -u golang.org/x/net
-	go build
-	./chatserver -h localhost -p 1024
+	- cd ./chatserver
+	- go get -u golang.org/x/net
+	- go build
+	- ./chatserver -h localhost -p 1024
 - client:
-	cd ./chatclient
-	go build
-	./chatclient -h localhost -p 1024 -n kewei // Join chatroom with openID "kewei"
+	- cd ./chatclient
+	- go build
+	- ./chatclient -h localhost -p 1024 -n kewei // Join chatroom with openID "kewei"
